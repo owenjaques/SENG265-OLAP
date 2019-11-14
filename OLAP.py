@@ -40,10 +40,13 @@ def main():
 	find_means = False
 	if args.mean:
 		means = {}
+		#initialize mean dict
+		for m in args.mean:
+			means[m] = 0
 		find_means = True
 
 	find_sums = False
-	if find_means and args.sums:
+	if args.sums:
 		sums = {}
 		#initialize sum dict
 		for s in args.sums:
@@ -78,33 +81,49 @@ def main():
 
 			if find_sums:
 				for s in args.sums:
-					sums[s] += float(row[m])
+					sums[s] += float(row[s])
+
+			#if time permits add optimization to use the sums if its in both
+			if find_means:
+				for m in args.mean:
+					means[m] += float(row[m])
+
+	#finds the means
+	if find_means:
+		means = {k:v/count for (k,v) in means.items()}
+
+	#add actually print flags
 
 	#writes the file
 	fieldnames = []
-	row1 = {}
+	row = {}
 	if find_count:
 		fieldnames.append('count')
-		row1['count'] = count
+		row['count'] = count
 
 	if find_minimums:
 		for m in args.minimum:
 			fieldnames.append('min_' + m)
-			row1['min_' + m] = minimums[m]
+			row['min_' + m] = minimums[m]
 
 	if find_maximums:
 		for m in args.maximum:
 			fieldnames.append('max_' + m)
-			row1['max_' + m] = maximums[m]
+			row['max_' + m] = maximums[m]
 	
 	if find_sums:
 		for s in args.sums:
 			fieldnames.append('sum_' + s)
-			row1['sum_' + s] = sums[s]
+			row['sum_' + s] = sums[s]
+
+	if find_means:
+		for m in args.mean:
+			fieldnames.append('mean_' + m)
+			row['mean_' + m] = means[m]
 
 	writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
 	writer.writeheader()
-	writer.writerow(row1)
+	writer.writerow(row)
 
 if __name__ == '__main__':
 	main()
