@@ -6,7 +6,8 @@ import sys
 import csv
 
 def get_args():
-	parser = argparse.ArgumentParser()
+	#gets the command line arguments
+	parser = argparse.ArgumentParser(description="This is OLAP.py")
 	parser.add_argument('--input', dest='input_file', required=True)
 	parser.add_argument('--group-by', dest='group_by')
 	parser.add_argument('--top', dest='top', nargs=2, action='append')
@@ -20,11 +21,12 @@ def get_args():
 def main():
 	args = get_args()
 
-	#flag variables for the main loop to see what to find
+	#TODO: make a get data function, make a write file function
+
+	#this next part initializes all variablea that should be initialized depending on what needs to be found
 	find_count = False
 	find_minimums = False
 	find_maximums = False
-	find_means = False
 	find_sums = False
 
 	#goes off if their are no aggregrate arguments
@@ -44,13 +46,14 @@ def main():
 
 	if args.mean:
 		means = {}
-		find_means = True
 		find_count = True
 		count = 0
 
+	#adds the means variables that must be found into the dictionary of sums as well
 	if args.sums or args.mean:
 		sums = {} #all the things to sum
 		display_sums = {} #the sums to display
+		find_sums = True
 
 		#initialize sum dict
 		if args.sums:
@@ -62,8 +65,6 @@ def main():
 		if args.mean:
 			for m in args.mean:
 				sums[m] = 0
-		
-		find_sums = True
 
 	#could have modularised this bad boy but this works and does it in one pass through :)
 	with open(args.input_file) as the_file:
@@ -95,38 +96,42 @@ def main():
 					sums[s] += float(row[s])
 
 	#finds the means
-	if find_means:
+	if args.mean:
 		for m in args.mean:
 			means[m] = sums[m] / count
 
-	#add actually print flags
-
-	#writes the file
+	#gets the arguments in order then prints the file
+	ordered_args = sys.argv[1:]
 	fieldnames = []
 	row = {}
-	if args.count:
-		fieldnames.append('count')
-		row['count'] = count
+	for i in range(len(ordered_args)):
+		#makes sure it won't reach out of index
+		if i != len(ordered_args) - 1:
+			k = ordered_args[i+1]
 
-	if args.minimum:
-		for m in args.minimum:
-			fieldnames.append('min_' + m)
-			row['min_' + m] = minimums[m]
+		if ordered_args[i] == '--count':
+			fieldnames.append('count')
+			row['count'] = count
 
-	if args.maximum:
-		for m in args.maximum:
-			fieldnames.append('max_' + m)
-			row['max_' + m] = maximums[m]
-	
-	if args.sums:
-		for s in args.sums:
-			fieldnames.append('sum_' + s)
-			row['sum_' + s] = sums[s]
+		elif ordered_args[i] == '--min':
+			fieldnames.append('min_' + k)
+			row['min_' + k] = minimums[k]
+			i += 1
 
-	if args.mean:
-		for m in args.mean:
-			fieldnames.append('mean_' + m)
-			row['mean_' + m] = means[m]
+		elif ordered_args[i] == '--max':
+			fieldnames.append('max_' + k)
+			row['max_' + k] = maximums[k]
+			i += 1
+		
+		elif ordered_args[i] == '--sum':
+			fieldnames.append('sum_' + k)
+			row['sum_' + k] = sums[k]
+			i += 1
+
+		elif ordered_args[i] == '--mean':
+			fieldnames.append('mean_' + k)
+			row['mean_' + k] = means[k]
+			i += 1
 
 	writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
 	writer.writeheader()
