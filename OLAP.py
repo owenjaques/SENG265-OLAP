@@ -19,40 +19,52 @@ def get_args():
 
 def main():
 	args = get_args()
-	#goes off if their are no aggregrate arguments
+
+	#flag variables for the main loop to see what to find
 	find_count = False
+	find_minimums = False
+	find_maximums = False
+	find_means = False
+	find_sums = False
+
+	#a special flag variable to indicate whether or not to display count or it is just being calculated for the means
+	display_count = False
+
+	#goes off if their are no aggregrate arguments
 	if len(sys.argv) == 3:
 		find_count = True
 	if args.count or find_count:
 		count = 0
 		find_count = True
+		display_count = True
 	
-	find_minimums = False
 	if args.minimum:
 		minimums = {}
 		find_minimums = True
 
-	find_maximums = False
 	if args.maximum:
 		maximums = {}
 		find_maximums = True
 
-	find_means = False
 	if args.mean:
 		means = {}
-		#initialize mean dict
-		for m in args.mean:
-			means[m] = 0
 		find_means = True
+		find_count = True
 
-	find_sums = False
-	if args.sums:
-		sums = {}
+	if args.sums or args.mean:
+		sums = {} #all the things to sum
+		display_sums = {} #the sums to display
+
 		#initialize sum dict
 		for s in args.sums:
 			sums[s] = 0
+			display_sums[s] = 0
+
+		#add the means required to calculate as well
+		for m in args.mean:
+			sums[m] = 0
+		
 		find_sums = True
-		#add checking for not sums needed only add shared list
 
 	#could have modularised this bad boy but this works and does it in one pass through :)
 	with open(args.input_file) as the_file:
@@ -80,24 +92,20 @@ def main():
 						maximums[m] = num
 
 			if find_sums:
-				for s in args.sums:
+				for s in sums.keys():
 					sums[s] += float(row[s])
-
-			#if time permits add optimization to use the sums if its in both
-			if find_means:
-				for m in args.mean:
-					means[m] += float(row[m])
 
 	#finds the means
 	if find_means:
-		means = {k:v/count for (k,v) in means.items()}
+		for m in args.mean:
+			means[m] = sums[m] / count
 
 	#add actually print flags
 
 	#writes the file
 	fieldnames = []
 	row = {}
-	if find_count:
+	if display_count:
 		fieldnames.append('count')
 		row['count'] = count
 
