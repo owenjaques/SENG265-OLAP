@@ -18,48 +18,44 @@ def get_args():
 	parser.add_argument('--count', dest='count', action='store_true')
 	return parser.parse_args()
 
-def main():
-	args = get_args()
-
-	#TODO: make a get data function, make a write file function
-
+def get_values(args):
 	#this next part initializes all variablea that should be initialized depending on what needs to be found
 	find_count = False
 	find_minimums = False
 	find_maximums = False
 	find_sums = False
 
+	#dictionaries of everything to calculate (and count)
+	count = 0
+	minimums = {}
+	maximums = {}
+	means = {}
+	sums = {}
+
 	#goes off if their are no aggregrate arguments
 	if len(sys.argv) == 3:
 		find_count = True
 	if args.count or find_count:
-		count = 0
 		find_count = True
 	
 	if args.minimum:
-		minimums = {}
 		find_minimums = True
 
 	if args.maximum:
-		maximums = {}
 		find_maximums = True
 
 	if args.mean:
-		means = {}
 		find_count = True
 		count = 0
 
 	#adds the means variables that must be found into the dictionary of sums as well
 	if args.sums or args.mean:
-		sums = {} #all the things to sum
-		display_sums = {} #the sums to display
 		find_sums = True
 
 		#initialize sum dict
 		if args.sums:
 			for s in args.sums:
 				sums[s] = 0
-				display_sums[s] = 0
 
 		#add the means required to calculate as well
 		if args.mean:
@@ -100,7 +96,13 @@ def main():
 		for m in args.mean:
 			means[m] = sums[m] / count
 
-	#gets the arguments in order then prints the file
+	return count, minimums, maximums, means, sums
+
+def print_file(count, minimums, maximums, means, sums):
+	"""
+	prints the results of various arguments to the file in the order they were given in csv format
+	accepts as parameters dictionaries of various calculated values and the count (int)
+	"""
 	ordered_args = sys.argv[1:]
 	fieldnames = []
 	row = {}
@@ -136,6 +138,10 @@ def main():
 	writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
 	writer.writeheader()
 	writer.writerow(row)
+
+def main():
+	count, minimums, maximums, means, sums = get_values(get_args())
+	print_file(count, minimums, maximums, means, sums)
 
 if __name__ == '__main__':
 	main()
