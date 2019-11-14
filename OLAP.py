@@ -27,16 +27,12 @@ def main():
 	find_means = False
 	find_sums = False
 
-	#a special flag variable to indicate whether or not to display count or it is just being calculated for the means
-	display_count = False
-
 	#goes off if their are no aggregrate arguments
 	if len(sys.argv) == 3:
 		find_count = True
 	if args.count or find_count:
 		count = 0
 		find_count = True
-		display_count = True
 	
 	if args.minimum:
 		minimums = {}
@@ -50,19 +46,22 @@ def main():
 		means = {}
 		find_means = True
 		find_count = True
+		count = 0
 
 	if args.sums or args.mean:
 		sums = {} #all the things to sum
 		display_sums = {} #the sums to display
 
 		#initialize sum dict
-		for s in args.sums:
-			sums[s] = 0
-			display_sums[s] = 0
+		if args.sums:
+			for s in args.sums:
+				sums[s] = 0
+				display_sums[s] = 0
 
 		#add the means required to calculate as well
-		for m in args.mean:
-			sums[m] = 0
+		if args.mean:
+			for m in args.mean:
+				sums[m] = 0
 		
 		find_sums = True
 
@@ -105,26 +104,26 @@ def main():
 	#writes the file
 	fieldnames = []
 	row = {}
-	if display_count:
+	if args.count:
 		fieldnames.append('count')
 		row['count'] = count
 
-	if find_minimums:
+	if args.minimum:
 		for m in args.minimum:
 			fieldnames.append('min_' + m)
 			row['min_' + m] = minimums[m]
 
-	if find_maximums:
+	if args.maximum:
 		for m in args.maximum:
 			fieldnames.append('max_' + m)
 			row['max_' + m] = maximums[m]
 	
-	if find_sums:
+	if args.sums:
 		for s in args.sums:
 			fieldnames.append('sum_' + s)
 			row['sum_' + s] = sums[s]
 
-	if find_means:
+	if args.mean:
 		for m in args.mean:
 			fieldnames.append('mean_' + m)
 			row['mean_' + m] = means[m]
