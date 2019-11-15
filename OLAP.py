@@ -6,7 +6,9 @@ import sys
 import csv
 
 #TODO: add a way to deal with newlines and " in the tops
-#TODO: call count if there were no posional arguments but there was a group by
+#TODO: add support for large k in tops
+#TODO: fix stupid sector bug
+#TODO: fix stupid "" issues
 
 class Group:
 	"""
@@ -127,12 +129,12 @@ def get_values(args):
 		for g in groups.keys():
 			max_tops = {}
 			for t in groups[g].tops.keys():
-				#first converts the dictionary of tops to a two dimensional list
-				tops_but_as_a_list = [[k, v] for k, v in groups[g].tops[t]['all'].items()]
-				#then sorts the list using a key that only looks at the second value of the inner list
-				sorted_values = sorted(tops_but_as_a_list, reverse=True, key=lambda top: top[1])
-				#isolates just the top k values
-				k_maxes = sorted_values[0: groups[g].tops[t]['k']]
+				#really went off with this next statement. if my style mark suffers so be it, but some might
+				#say a snazzy one liner is the most stylish way ;) but forget that here's what it does:
+				# first converts the dictionary of tops to a two dimensional list
+				# then sorts the list using a key that only looks at the second value of the inner list
+				# then isolates just the top k values
+				k_maxes = sorted([[k, v] for k, v in groups[g].tops[t]['all'].items()], reverse=True, key=lambda top: top[1])[0: groups[g].tops[t]['k']]
 				#makes the string
 				max_tops[t] = ""
 				for i in range(len(k_maxes)):
