@@ -23,10 +23,23 @@ class Group:
 		self.sums = {}
 		self.tops = {}
 
+		#a flag variable to tell if any numeric values have been entered in the sums field
+		self.nan_sums = {}
+
+		#initialize minimums dict to NaNs
+		if args.minimum:
+			for m in args.minimum:
+				self.minimums[m] = 'NaN'
+
+		if args.maximum:
+			for m in args.maximum:
+				self.maximums[m] = 'NaN'
+
 		#initialize sum dict
 		if args.sums:
 			for s in args.sums:
 				self.sums[s] = 0
+				self.nan_sums[s] = True
 
 		#add the means required to calculate as well
 		if args.mean:
@@ -78,7 +91,7 @@ def get_values(args):
 	with open(args.input_file) as the_file:
 		reader = csv.DictReader(the_file, delimiter=',')
 		reader.fieldnames = [field.lower() for field in reader.fieldnames]
-		for row in reader:
+		for line_number, row in enumerate(reader, start=1):
 			#determines which group its reading
 			current_group = 'All' if not grouper else row[grouper]
 
@@ -91,25 +104,38 @@ def get_values(args):
 			
 			if find_minimums:
 				for m in args.minimum:
-					num = float(row[m])
-					if m in groups[current_group].minimums:
-						if num < groups[current_group].minimums[m]:
+					try:
+						num = float(row[m])
+						if m in groups[current_group].minimums:
+							if num < groups[current_group].minimums[m]:
+								groups[current_group].minimums[m] = num
+						else:
 							groups[current_group].minimums[m] = num
-					else:
-						groups[current_group].minimums[m] = num
+					except ValueError:
+						print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute min on non-numeric value '" + str(row[m]) + "'", file=sys.stderr)
 
 			if find_maximums:
 				for m in args.maximum:
-					num = float(row[m])
-					if m in groups[current_group].maximums: 
-						if num > groups[current_group].maximums[m]:
+					try:
+						num = float(row[m])
+						if m in groups[current_group].maximums: 
+							if num > groups[current_group].maximums[m]:
+								groups[current_group].maximums[m] = num
+						else:
 							groups[current_group].maximums[m] = num
-					else:
-						groups[current_group].maximums[m] = num
+					except ValueError:
+						print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute max on non-numeric value '" + str(row[m]) + "'", file=sys.stderr)
 
 			if find_sums:
 				for s in groups[current_group].sums.keys():
-					groups[current_group].sums[s] += float(row[s])
+					try:
+						groups[current_group].sums[s] += float(row[s])
+						groups[current_group].nan_sums[s] = False
+					except ValueError:
+						if s in args.sums:
+							print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute sum on non-numeric value '" + str(row[s]) + "'", file=sys.stderr)
+						if s in args.mean:
+							print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute mean on non-numeric value '" + str(row[s]) + "'", file=sys.stderr)
 
 			if find_tops:
 				for t in groups[current_group].tops.keys():
@@ -118,11 +144,17 @@ def get_values(args):
 					else:
 						groups[current_group].tops[t]['all'][row[t]] = 1
 
+	#sets the NaNs for the sums if nothing was added to the 0
+	for g in groups.keys():
+		for s in args.sums:
+			if groups[g].nan_sums[s]:
+				groups[g].sums[s] = 'NaN'
+	
 	#finds the means
 	if args.mean:
 		for g in groups.keys():
 			for m in args.mean:
-				groups[g].means[m] = groups[g].sums[m] / groups[g].counter
+				groups[g].means[m] = groups[g].sums[m] / groups[g].counter if groups[g].sums[s] != 'NaN' else 'Nan'
 
 	#finds the k amount of tops
 	if find_tops:
