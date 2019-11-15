@@ -5,6 +5,9 @@ import os
 import sys
 import csv
 
+#TODO: add a way to deal with newlines and " in the tops
+#TODO: call count if there were no posional arguments but there was a group by
+
 class Group:
 	"""
 	just a little helper class to hold each group's variables
@@ -64,10 +67,9 @@ def get_values(args):
 		groups['All'] = Group(args)
 
 	#flags to show whether or not something should be calculated
-	find_count = True if len(sys.argv) == 3 or args.counter else False #goes off if their are no aggregrate arguments as well
+	find_count = True if len(sys.argv) == 3 or args.counter or args.mean or len(sys.argv) == 5 and args.group_by else False #goes off if their are no aggregrate arguments as well
 	find_minimums = True if args.minimum else False
 	find_maximums = True if args.maximum else False
-	find_count = True if args.mean else False
 	find_tops = True if args.top else False
 	find_sums = True if args.sums or args.mean else False
 
@@ -161,6 +163,9 @@ def print_file(groups):
 
 		#adds every group's value to the rows for the current 
 		for z, g in enumerate(sorted(groups.keys())):
+			#a flag for adding the count in the case the file is being grouped-by but no aggregrate arguments were specified
+			getting_grouped_by = False
+
 			if ordered_args[i] == '--count':
 				if z == 0:
 					fieldnames.append('count')
@@ -201,8 +206,15 @@ def print_file(groups):
 					#doesnt append because group by should always be the first row
 					fieldnames.insert(0, k)
 					new_i = i + 1
+				getting_grouped_by = True
 				rows[z][k] = g
-		
+
+			#adds the count if no other aggregrate arguments were specified
+			if len(sys.argv) == 3 or len(sys.argv) == 5 and getting_grouped_by:
+				if z == 0:
+					fieldnames.append('count')
+				rows[z]['count'] = groups[g].counter
+			
 		i = new_i
 
 	#outputs the csv to the stdout
