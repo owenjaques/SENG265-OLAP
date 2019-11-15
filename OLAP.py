@@ -24,6 +24,7 @@ def get_values(args):
 	find_minimums = False
 	find_maximums = False
 	find_sums = False
+	find_tops = False
 
 	#dictionaries of everything to calculate (and count)
 	count = 0
@@ -31,6 +32,7 @@ def get_values(args):
 	maximums = {}
 	means = {}
 	sums = {}
+	tops = {}
 
 	#goes off if their are no aggregrate arguments
 	if len(sys.argv) == 3:
@@ -62,7 +64,11 @@ def get_values(args):
 			for m in args.mean:
 				sums[m] = 0
 
-	#could have modularised this bad boy but this works and does it in one pass through :)
+		if args.top:
+			find_tops = True
+			for t in args.top:
+				tops[t[1]] = {'k': int(t[0]), 'all': {}}
+
 	with open(args.input_file) as the_file:
 		reader = csv.DictReader(the_file, delimiter=',')
 		for row in reader:
@@ -91,14 +97,37 @@ def get_values(args):
 				for s in sums.keys():
 					sums[s] += float(row[s])
 
+			if find_tops:
+				for t in tops.keys():
+					if row[t] in tops[t]['all']:
+						tops[t]['all'][row[t]] += 1
+					else:
+						tops[t]['all'][row[t]] = 0
+
 	#finds the means
 	if args.mean:
 		for m in args.mean:
 			means[m] = sums[m] / count
 
-	return count, minimums, maximums, means, sums
+	#finds the k amount of tops
+	max_tops = {}
+	for t in tops.keys():
+		#first converts the dictionary of tops to a two dimensional list
+		tops_but_as_a_list = [[k, v] for k, v in tops[t]['all'].items()]
+		#then sorts the list using a key that only looks at the second value of the inner list
+		sorted_values = sorted(tops_but_as_a_list, reverse=True, key=lambda top: top[1])
+		#isolates just the top k values
+		k_maxes = sorted_values[0: tops[t]['k']]
+		#makes the string
+		max_tops[t] = ""
+		for i in range(len(k_maxes)):
+			max_tops[t] += str(k_maxes[i][0]) + ': ' + str(k_maxes[i][1])
+			if i != len(k_maxes) - 1:
+				max_tops[t] += ', '
 
-def print_file(count, minimums, maximums, means, sums):
+	return count, minimums, maximums, means, sums, max_tops
+
+def print_file(count, minimums, maximums, means, sums, tops):
 	"""
 	prints the results of various arguments to the file in the order they were given in csv format
 	accepts as parameters dictionaries of various calculated values and the count (int)
@@ -135,13 +164,18 @@ def print_file(count, minimums, maximums, means, sums):
 			row['mean_' + k] = means[k]
 			i += 1
 
+		elif ordered_args[i] == '--top':
+			fieldnames.append('top' + k + '_' + ordered_args[i+2])
+			row['top' + k + '_' + ordered_args[i+2]] = tops[ordered_args[i+2]]
+			i += 2
+
 	writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
 	writer.writeheader()
 	writer.writerow(row)
 
 def main():
-	count, minimums, maximums, means, sums = get_values(get_args())
-	print_file(count, minimums, maximums, means, sums)
+	count, minimums, maximums, means, sums, tops = get_values(get_args())
+	print_file(count, minimums, maximums, means, sums, tops)
 
 if __name__ == '__main__':
 	main()
