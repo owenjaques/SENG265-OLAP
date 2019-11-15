@@ -38,12 +38,12 @@ def get_args():
 	"""
 	parser = argparse.ArgumentParser(description="This is OLAP.py")
 	parser.add_argument('--input', dest='input_file', required=True)
-	parser.add_argument('--group-by', dest='group_by')
-	parser.add_argument('--top', dest='top', nargs=2, action='append')
-	parser.add_argument('--min', dest='minimum', action='append')
-	parser.add_argument('--max', dest='maximum', action='append')
-	parser.add_argument('--mean', dest='mean', action='append')
-	parser.add_argument('--sum', dest='sums', action='append')
+	parser.add_argument('--group-by', dest='group_by', type=str.lower)
+	parser.add_argument('--top', dest='top', nargs=2, action='append', type=str.lower)
+	parser.add_argument('--min', dest='minimum', action='append', type=str.lower)
+	parser.add_argument('--max', dest='maximum', action='append', type=str.lower)
+	parser.add_argument('--mean', dest='mean', action='append', type=str.lower)
+	parser.add_argument('--sum', dest='sums', action='append', type=str.lower)
 	parser.add_argument('--count', dest='counter', action='store_true')
 	return parser.parse_args()
 
@@ -73,6 +73,7 @@ def get_values(args):
 
 	with open(args.input_file) as the_file:
 		reader = csv.DictReader(the_file, delimiter=',')
+		reader.fieldnames = [field.lower() for field in reader.fieldnames]
 		for row in reader:
 			#determines which group its reading
 			current_group = 'All' if not grouper else row[grouper]
@@ -145,7 +146,7 @@ def print_file(groups):
 	prints the results of the requested arguments to the file in the order they were given in csv format
 	accepts as parameters dictionaries of various calculated values and the count (int)
 	"""
-	ordered_args = sys.argv[1:]
+	ordered_args = [s.lower() for s in sys.argv[1:]]
 	fieldnames = []
 
 	#creates the rows to prevent index out of bound errors
@@ -158,8 +159,8 @@ def print_file(groups):
 
 		new_i = 0 #for changing i mid loop without affecting comparisons
 
-		#adds every group's value to the rows for the current fieldname
-		for z, g in enumerate(groups.keys()):
+		#adds every group's value to the rows for the current 
+		for z, g in enumerate(sorted(groups.keys())):
 			if ordered_args[i] == '--count':
 				if z == 0:
 					fieldnames.append('count')
@@ -197,7 +198,8 @@ def print_file(groups):
 
 			elif ordered_args[i] == '--group-by':
 				if z == 0:
-					fieldnames.append(k)
+					#doesnt append because group by should always be the first row
+					fieldnames.insert(0, k)
 					new_i = i + 1
 				rows[z][k] = g
 		
