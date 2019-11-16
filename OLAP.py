@@ -65,6 +65,19 @@ def get_args():
 	parser.add_argument('--count', dest='counter', action='store_true')
 	return parser.parse_args()
 
+def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file, line_number, aggregrate_field, value):
+	"""
+	prints a non numeric value error all parameters are fairly straightforard from 
+	the name and just for printing except for the non numeric tracker which checks 
+	for the non numeric fields getting above 100 which would print an error then exit
+	the program with error code 7
+	"""
+	print('Error: ' + input_file + ':' + str(line_number) + ": can't compute " + aggregrate_function + " on non-numeric value '" + str(value) + "'", file=sys.stderr)
+	non_numeric_tracker[aggregrate_field] += 1
+	if non_numeric_tracker[aggregrate_field] == 100:
+		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column '" + aggregrate_field + "'", file=sys.stderr)
+		sys.exit(7)
+
 def get_values(args):
 	"""
 	computes all the values requested from the parsed arguments 
@@ -91,6 +104,7 @@ def get_values(args):
 	with open(args.input_file) as the_file:
 		reader = csv.DictReader(the_file, delimiter=',')
 		reader.fieldnames = [field.lower() for field in reader.fieldnames]
+		non_numeric_tracker = {k: 0 for k in reader.fieldnames}
 		for line_number, row in enumerate(reader, start=1):
 			#determines which group its reading
 			current_group = 'All' if not grouper else row[grouper]
@@ -112,7 +126,7 @@ def get_values(args):
 						else:
 							groups[current_group].minimums[m] = num
 					except ValueError:
-						print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute min on non-numeric value '" + str(row[m]) + "'", file=sys.stderr)
+						non_numeric_value_error('min', non_numeric_tracker, args.input_file, line_number, m, row[m])
 
 			if find_maximums:
 				for m in args.maximum:
@@ -124,7 +138,7 @@ def get_values(args):
 						else:
 							groups[current_group].maximums[m] = num
 					except ValueError:
-						print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute max on non-numeric value '" + str(row[m]) + "'", file=sys.stderr)
+						non_numeric_value_error('ax', non_numeric_tracker, args.input_file, line_number, m, row[m])
 
 			if find_sums:
 				for s in groups[current_group].sums.keys():
@@ -133,9 +147,9 @@ def get_values(args):
 						groups[current_group].nan_sums[s] = False
 					except ValueError:
 						if s in args.sums:
-							print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute sum on non-numeric value '" + str(row[s]) + "'", file=sys.stderr)
+							non_numeric_value_error('sum', non_numeric_tracker, args.input_file, line_number, s, row[s])
 						if s in args.mean:
-							print('Error: ' + args.input_file + ':' + str(line_number) + ": can't compute mean on non-numeric value '" + str(row[s]) + "'", file=sys.stderr)
+							non_numeric_value_error('mean', non_numeric_tracker, args.input_file, line_number, s, row[s])
 
 			if find_tops:
 				for t in groups[current_group].tops.keys():
@@ -154,7 +168,7 @@ def get_values(args):
 	if args.mean:
 		for g in groups.keys():
 			for m in args.mean:
-				groups[g].means[m] = groups[g].sums[m] / groups[g].counter if groups[g].sums[s] != 'NaN' else 'Nan'
+				groups[g].means[m] = groups[g].sums[m] / groups[g].counter if groups[g].sums[s] != 'NaN' else 'NaN'
 
 	#finds the k amount of tops
 	if find_tops:
