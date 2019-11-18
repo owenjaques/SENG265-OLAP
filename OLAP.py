@@ -6,9 +6,6 @@ import sys
 import csv
 
 #TODO: add a way to deal with newlines and " in the tops
-#TODO: add support for large k in tops
-#TODO: fix stupid sector bug
-#TODO: fix stupid "" issues
 
 class Group:
 	"""
@@ -104,7 +101,7 @@ def get_values(args):
 	find_tops = True if args.top else False
 	find_sums = True if args.sums or args.mean else False
 
-	with open(args.input_file) as the_file:
+	with open(args.input_file, 'r', encoding='UTF-8-SIG') as the_file:
 		reader = csv.DictReader(the_file, delimiter=',')
 		reader.fieldnames = [field.lower() for field in reader.fieldnames]
 		non_numeric_tracker = {'field_counts': {k: 0 for k in reader.fieldnames}, 'line_numbers': []}
@@ -162,10 +159,11 @@ def get_values(args):
 						groups[current_group].tops[t]['all'][row[t]] = 1
 
 	#sets the NaNs for the sums if nothing was added to the 0
-	for g in groups.keys():
-		for s in args.sums:
-			if groups[g].nan_sums[s]:
-				groups[g].sums[s] = 'NaN'
+	if args.sums:
+		for g in groups.keys():
+			for s in args.sums:
+				if groups[g].nan_sums[s]:
+					groups[g].sums[s] = 'NaN'
 	
 	#finds the means
 	if args.mean:
