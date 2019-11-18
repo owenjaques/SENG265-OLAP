@@ -120,7 +120,7 @@ def get_values(args):
 				for m in args.minimum:
 					try:
 						num = float(row[m])
-						if m in groups[current_group].minimums:
+						if m in groups[current_group].minimums and groups[current_group].minimums[m] != 'NaN':
 							if num < groups[current_group].minimums[m]:
 								groups[current_group].minimums[m] = num
 						else:
@@ -132,7 +132,7 @@ def get_values(args):
 				for m in args.maximum:
 					try:
 						num = float(row[m])
-						if m in groups[current_group].maximums: 
+						if m in groups[current_group].maximums and groups[current_group].maximums[m] != 'NaN': 
 							if num > groups[current_group].maximums[m]:
 								groups[current_group].maximums[m] = num
 						else:
@@ -203,6 +203,9 @@ def print_file(groups):
 	#creates the rows to prevent index out of bound errors
 	rows = [{} for _ in range(len(groups.keys()))]
 
+	#a flag for adding the count if there are no aggregrate arguments
+	has_been_counted = False
+
 	for i in range(len(ordered_args)):
 		#makes sure it won't reach out of index
 		if i != len(ordered_args) - 1:
@@ -259,9 +262,10 @@ def print_file(groups):
 				rows[z][k] = g
 
 			#adds the count if no other aggregrate arguments were specified
-			if len(sys.argv) == 3 or len(sys.argv) == 5 and getting_grouped_by:
+			if len(sys.argv) == 3 and not has_been_counted or len(sys.argv) == 5 and getting_grouped_by:
 				if z == 0:
 					fieldnames.append('count')
+					has_been_counted = True
 				rows[z]['count'] = groups[g].counter
 			
 		i = new_i
