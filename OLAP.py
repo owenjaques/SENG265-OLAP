@@ -51,7 +51,7 @@ def get_args():
 	"""
 	gets the command line arguments then returns them in a parsed format
 	"""
-	parser = argparse.ArgumentParser(description="This is OLAP.py")
+	parser = argparse.ArgumentParser(description="This is OLAP.py - for small data only")
 	parser.add_argument('--input', dest='input_file', required=True)
 	parser.add_argument('--group-by', dest='group_by', type=str.lower)
 	parser.add_argument('--top', dest='top', nargs=2, action='append', type=str.lower)
@@ -92,7 +92,7 @@ def get_values(args):
 		grouper = args.group_by
 	else:
 		grouper = False
-		groups['All'] = Group(args)
+		groups['_OTHER'] = Group(args)
 
 	#flags to show whether or not something should be calculated
 	find_count = True if len(sys.argv) == 3 or args.counter or args.mean or len(sys.argv) == 5 and args.group_by else False #goes off if their are no aggregrate arguments as well
@@ -101,62 +101,75 @@ def get_values(args):
 	find_tops = True if args.top else False
 	find_sums = True if args.sums or args.mean else False
 
-	with open(args.input_file, 'r', encoding='UTF-8-SIG') as the_file:
-		reader = csv.DictReader(the_file, delimiter=',')
-		reader.fieldnames = [field.lower() for field in reader.fieldnames]
-		non_numeric_tracker = {'field_counts': {k: 0 for k in reader.fieldnames}, 'line_numbers': []}
-		for line_number, row in enumerate(reader, start=1):
-			#determines which group its reading
-			current_group = 'All' if not grouper else row[grouper]
+	try:
+		with open(args.input_file, 'r', encoding='UTF-8-SIG') as the_file:
+			reader = csv.DictReader(the_file, delimiter=',')
+			reader.fieldnames = [field.lower() for field in reader.fieldnames]
+			non_numeric_tracker = {'field_counts': {k: 0 for k in reader.fieldnames}, 'line_numbers': []}
 
-			#creates the group if it doesnt already exist
-			if current_group not in groups:
-				groups[current_group] = Group(args)
+			#calculates all requested aggregrates in one pass by
+			for line_number, row in enumerate(reader, start=1):
+				#determines which group its reading
+				current_group = '_OTHER' if not grouper else row[grouper]
 
-			if find_count:
-				groups[current_group].counter += 1
-			
-			if find_minimums:
-				for m in args.minimum:
-					try:
-						num = float(row[m])
-						if m in groups[current_group].minimums and groups[current_group].minimums[m] != 'NaN':
-							if num < groups[current_group].minimums[m]:
-								groups[current_group].minimums[m] = num
-						else:
-							groups[current_group].minimums[m] = num
-					except ValueError:
-						non_numeric_value_error('min', non_numeric_tracker, args.input_file, line_number, m, row[m])
-
-			if find_maximums:
-				for m in args.maximum:
-					try:
-						num = float(row[m])
-						if m in groups[current_group].maximums and groups[current_group].maximums[m] != 'NaN': 
-							if num > groups[current_group].maximums[m]:
-								groups[current_group].maximums[m] = num
-						else:
-							groups[current_group].maximums[m] = num
-					except ValueError:
-						non_numeric_value_error('ax', non_numeric_tracker, args.input_file, line_number, m, row[m])
-
-			if find_sums:
-				for s in groups[current_group].sums.keys():
-					try:
-						groups[current_group].sums[s] += float(row[s])
-						groups[current_group].nan_sums[s] = False
-					except ValueError:
-						if s in args.sums:
-							non_numeric_value_error('sum', non_numeric_tracker, args.input_file, line_number, s, row[s])
-						if s in args.mean:
-							non_numeric_value_error('mean', non_numeric_tracker, args.input_file, line_number, s, row[s])
-
-			if find_tops:
-				for t in groups[current_group].tops.keys():
-					if row[t] in groups[current_group].tops[t]['all']:
-						groups[current_group].tops[t]['all'][row[t]] += 1
+				#creates the group if it doesnt already exist unless there are more then 20...
+				if current_group not in groups:
+					if len(groups) != 20:
+						groups[current_group] = Group(args)
 					else:
-						groups[current_group].tops[t]['all'][row[t]] = 1
+						groups['_OTHER'] = Group(args)
+						print('​Error:' + args.input_file + ':' + grouper +  ' has been capped at 20 distinct values', file=sys.stderr)
+						grouper = False
+						current_group = '_OTHER'
+
+				if find_count:
+					groups[current_group].counter += 1
+				
+				if find_minimums:
+					for m in args.minimum:
+						try:
+							num = float(row[m])
+							if m in groups[current_group].minimums and groups[current_group].minimums[m] != 'NaN':
+								if num < groups[current_group].minimums[m]:
+									groups[current_group].minimums[m] = num
+							else:
+								groups[current_group].minimums[m] = num
+						except ValueError:
+							non_numeric_value_error('min', non_numeric_tracker, args.input_file, line_number, m, row[m])
+
+				if find_maximums:
+					for m in args.maximum:
+						try:
+							num = float(row[m])
+							if m in groups[current_group].maximums and groups[current_group].maximums[m] != 'NaN': 
+								if num > groups[current_group].maximums[m]:
+									groups[current_group].maximums[m] = num
+							else:
+								groups[current_group].maximums[m] = num
+						except ValueError:
+							non_numeric_value_error('ax', non_numeric_tracker, args.input_file, line_number, m, row[m])
+
+				if find_sums:
+					for s in groups[current_group].sums.keys():
+						try:
+							groups[current_group].sums[s] += float(row[s])
+							groups[current_group].nan_sums[s] = False
+						except ValueError:
+							if s in args.sums:
+								non_numeric_value_error('sum', non_numeric_tracker, args.input_file, line_number, s, row[s])
+							if s in args.mean:
+								non_numeric_value_error('mean', non_numeric_tracker, args.input_file, line_number, s, row[s])
+
+				if find_tops:
+					for t in groups[current_group].tops.keys():
+						if row[t] in groups[current_group].tops[t]['all']:
+							groups[current_group].tops[t]['all'][row[t]] += 1
+						else:
+							groups[current_group].tops[t]['all'][row[t]] = 1
+
+	except FileNotFoundError:
+		print('Error:' + args.input_file + ':file not found', file=sys.stderr)
+		sys.exit(6)
 
 	#sets the NaNs for the sums if nothing was added to the 0
 	if args.sums:
