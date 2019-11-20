@@ -6,6 +6,8 @@ import sys
 import csv
 
 #TODO: add a way to deal with newlines and " in the tops
+#TODO: alpahbeticize the _OTHER maybe it is already
+#TODO: add printing of multiple aggregrate arguments *********
 
 class Group:
 	"""
@@ -55,12 +57,27 @@ def get_args():
 	parser.add_argument('--input', dest='input_file', required=True)
 	parser.add_argument('--group-by', dest='group_by', type=str.lower)
 	parser.add_argument('--top', dest='top', nargs=2, action='append', type=str.lower)
-	parser.add_argument('--min', dest='minimum', action='append', type=str.lower)
-	parser.add_argument('--max', dest='maximum', action='append', type=str.lower)
-	parser.add_argument('--mean', dest='mean', action='append', type=str.lower)
-	parser.add_argument('--sum', dest='sums', action='append', type=str.lower)
+	parser.add_argument('--min', dest='minimum', nargs='*', action='append', type=str.lower)
+	parser.add_argument('--max', dest='maximum', nargs='*', action='append', type=str.lower)
+	parser.add_argument('--mean', dest='mean', nargs='*', action='append', type=str.lower)
+	parser.add_argument('--sum', dest='sums', nargs='*', action='append', type=str.lower)
 	parser.add_argument('--count', dest='counter', action='store_true')
-	return parser.parse_args()
+
+	#change the lists of lists into lists to deal with cases of people putting in multiple arguments per aggregrate
+	args = parser.parse_args()
+	if args.minimum:
+		args.minimum = [x for y in args.minimum for x in y]
+
+	if args.maximum:
+		args.maximum = [x for y in args.maximum for x in y]
+
+	if args.mean:
+		args.mean = [x for y in args.mean for x in y]
+	
+	if args.sums:
+		args.sums = [x for y in args.sums for x in y]
+
+	return args
 
 def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file, line_number, aggregrate_field, value):
 	"""
@@ -189,8 +206,7 @@ def get_values(args):
 		for g in groups.keys():
 			max_tops = {}
 			for t in groups[g].tops.keys():
-				#really went off with this next statement. if my style mark suffers so be it, but some might
-				#say a snazzy one liner is the most stylish way ;) but forget that here's what it does:
+				#figured it would be better to have one huge statement isntead of tons of temp variables it:
 				# first converts the dictionary of tops to a two dimensional list
 				# then sorts the list using a key that only looks at the second value of the inner list
 				# then isolates just the top k values
@@ -220,12 +236,6 @@ def print_file(groups):
 	has_been_counted = False
 
 	for i in range(len(ordered_args)):
-		#makes sure it won't reach out of index
-		if i != len(ordered_args) - 1:
-			k = ordered_args[i+1]
-
-		new_i = 0 #for changing i mid loop without affecting comparisons
-
 		#adds every group's value to the rows for the current 
 		for z, g in enumerate(sorted(groups.keys())):
 			#a flag for adding the count in the case the file is being grouped-by but no aggregrate arguments were specified
@@ -237,42 +247,49 @@ def print_file(groups):
 				rows[z]['count'] = groups[g].counter
 
 			elif ordered_args[i] == '--min':
-				if z == 0:
-					fieldnames.append('min_' + k)
-					new_i = i + 1
-				rows[z]['min_' + k] = groups[g].minimums[k]
+				j = 1
+				#adds all the extra arguments as well ex: --min field1 field2 ...
+				while i + j < len(ordered_args) and ordered_args[i+j][0:2] != '--':
+					if z == 0:
+						fieldnames.append('min_' + ordered_args[i+j])
+					rows[z]['min_' + ordered_args[i+j]] = groups[g].minimums[ordered_args[i+j]]
+					j += 1
 
 			elif ordered_args[i] == '--max':
-				if z == 0:
-					fieldnames.append('max_' + k)
-					new_i = i + 1
-				rows[z]['max_' + k] = groups[g].maximums[k]
+				j = 1
+				while i + j < len(ordered_args) and ordered_args[i+j][0:2] != '--':
+					if z == 0:
+						fieldnames.append('max_' + ordered_args[i+j])
+					rows[z]['max_' + ordered_args[i+j]] = groups[g].maximums[ordered_args[i+j]]
+					j += 1
 			
 			elif ordered_args[i] == '--sum':
-				if z == 0:
-					fieldnames.append('sum_' + k)
-					new_i = i + 1
-				rows[z]['sum_' + k] = groups[g].sums[k]
+				j = 1
+				while i + j < len(ordered_args) and ordered_args[i+j][0:2] != '--':
+					if z == 0:
+						fieldnames.append('sum_' + ordered_args[i+j])
+					rows[z]['sum_' + ordered_args[i+j]] = groups[g].sums[ordered_args[i+j]]
+					j += 1
 
 			elif ordered_args[i] == '--mean':
-				if z == 0:
-					fieldnames.append('mean_' + k)
-					new_i = i + 1
-				rows[z]['mean_' + k] = groups[g].means[k]
+				j = 1
+				while i + j < len(ordered_args) and ordered_args[i+j][0:2] != '--':
+					if z == 0:
+						fieldnames.append('mean_' + ordered_args[i+j])
+					rows[z]['mean_' + ordered_args[i+j]] = groups[g].means[ordered_args[i+j]]
+					j += 1
 
 			elif ordered_args[i] == '--top':
 				if z == 0:
-					fieldnames.append('top' + k + '_' + ordered_args[i+2])
-					new_i = i + 2
-				rows[z]['top' + k + '_' + ordered_args[i+2]] = groups[g].tops[ordered_args[i+2]]
+					fieldnames.append('top' + ordered_args[i+1] + '_' + ordered_args[i+2])
+				rows[z]['top' + ordered_args[i+1] + '_' + ordered_args[i+2]] = groups[g].tops[ordered_args[i+2]]
 
 			elif ordered_args[i] == '--group-by':
 				if z == 0:
 					#doesnt append because group by should always be the first row
-					fieldnames.insert(0, k)
-					new_i = i + 1
+					fieldnames.insert(0, ordered_args[i+1])
 				getting_grouped_by = True
-				rows[z][k] = g
+				rows[z][ordered_args[i+1]] = g
 
 			#adds the count if no other aggregrate arguments were specified
 			if len(sys.argv) == 3 and not has_been_counted or len(sys.argv) == 5 and getting_grouped_by:
@@ -280,8 +297,6 @@ def print_file(groups):
 					fieldnames.append('count')
 					has_been_counted = True
 				rows[z]['count'] = groups[g].counter
-			
-		i = new_i
 
 	#outputs the csv to the stdout
 	writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
