@@ -53,15 +53,15 @@ def get_args():
 	"""
 	gets the command line arguments then returns them in a parsed format
 	"""
-	parser = argparse.ArgumentParser(description="This is OLAP.py - for small data only")
-	parser.add_argument('--input', dest='input_file', required=True)
-	parser.add_argument('--group-by', dest='group_by', type=str.lower)
-	parser.add_argument('--top', dest='top', nargs=2, action='append', type=str.lower)
-	parser.add_argument('--min', dest='minimum', nargs='*', action='append', type=str.lower)
-	parser.add_argument('--max', dest='maximum', nargs='*', action='append', type=str.lower)
-	parser.add_argument('--mean', dest='mean', nargs='*', action='append', type=str.lower)
-	parser.add_argument('--sum', dest='sums', nargs='*', action='append', type=str.lower)
-	parser.add_argument('--count', dest='counter', action='store_true')
+	parser = argparse.ArgumentParser(description="This is OLAP.py defaults to count")
+	parser.add_argument('--input', dest='input_file', required=True, help='The input file to be processed (csv)')
+	parser.add_argument('--group-by', dest='group_by', type=str.lower, help='For grouping the results of aggregate functions by a categorical field')
+	parser.add_argument('--top', dest='top', nargs=2, action='append', type=str.lower, help='For finding the top reacurring values in categorical fields')
+	parser.add_argument('--min', dest='minimum', nargs='*', action='append', type=str.lower, help='For finding the minimum value in a numerical field')
+	parser.add_argument('--max', dest='maximum', nargs='*', action='append', type=str.lower, help='For finding the maximum value in a numerical field')
+	parser.add_argument('--mean', dest='mean', nargs='*', action='append', type=str.lower, help='For finding the mean average of a numerical field')
+	parser.add_argument('--sum', dest='sums', nargs='*', action='append', type=str.lower, help='For finding the sum of a numerical field')
+	parser.add_argument('--count', dest='counter', action='store_true', help='For finding the amount of entries in the file or the group if --group-by is called')
 
 	#change the lists of lists into lists to deal with cases of people putting in multiple arguments per aggregrate
 	args = parser.parse_args()
