@@ -92,7 +92,7 @@ def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file
 		non_numeric_tracker['field_counts'][aggregrate_field] += 1
 		non_numeric_tracker['line_numbers'].append(line_number)
 	if non_numeric_tracker['field_counts'][aggregrate_field] > 100:
-		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column '" + aggregrate_field + "'", file=sys.stderr)
+		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column ‘" + aggregrate_field + "’", file=sys.stderr)
 		sys.exit(7)
 
 def get_values(args):
@@ -126,8 +126,12 @@ def get_values(args):
 
 			#calculates all requested aggregrates in one pass by
 			for line_number, row in enumerate(reader, start=1):
-				#determines which group its reading
-				current_group = '_OTHER' if not grouper else row[grouper]
+				#determines which group its reading and throw an error if that group does not exist
+				try:
+					current_group = '_OTHER' if not grouper else row[grouper]
+				except KeyError:
+					print('Error: ' + args.input_file + ':no group-by argument with name ‘' + grouper + '’', file=sys.stderr)
+					sys.exit(9)
 
 				#creates the group if it doesnt already exist unless there are more then 20...
 				if current_group not in groups:
