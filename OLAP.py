@@ -47,7 +47,11 @@ class Group:
 
 		if args.top:
 			for t in args.top:
-				self.tops[t[1]] = {'k': int(t[0]), 'all': {}}
+				try:
+					self.tops[t[1]] = {'k': int(t[0]), 'all': {}}
+				except ValueError:
+					print('Error: ' + args.input_file + ':unable to compute top ‘' + t[0] + '’' + ' values')
+					sys.exit(6)
 
 def get_args():
 	"""
@@ -94,6 +98,14 @@ def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file
 	if non_numeric_tracker['field_counts'][aggregrate_field] > 100:
 		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column ‘" + aggregrate_field + "’", file=sys.stderr)
 		sys.exit(7)
+
+def missing_field_error(input_file, missing_field):
+	"""
+	prints a missing field error then exits with error code 8
+	takes the input file and the missing field as strings
+	"""
+	print('Error: '+ input_file + ':no field with name ‘' + missing_field + '’', file=sys.stderr)
+	sys.exit(8)
 
 def get_values(args):
 	"""
@@ -157,6 +169,8 @@ def get_values(args):
 								groups[current_group].minimums[m] = num
 						except ValueError:
 							non_numeric_value_error('min', non_numeric_tracker, args.input_file, line_number, m, row[m])
+						except KeyError:
+							missing_field_error(args.input_file, m)
 
 				if find_maximums:
 					for m in args.maximum:
@@ -168,7 +182,9 @@ def get_values(args):
 							else:
 								groups[current_group].maximums[m] = num
 						except ValueError:
-							non_numeric_value_error('ax', non_numeric_tracker, args.input_file, line_number, m, row[m])
+							non_numeric_value_error('max', non_numeric_tracker, args.input_file, line_number, m, row[m])
+						except KeyError:
+							missing_field_error(args.input_file, m)
 
 				if find_sums:
 					for s in groups[current_group].sums.keys():
@@ -180,13 +196,18 @@ def get_values(args):
 								non_numeric_value_error('sum', non_numeric_tracker, args.input_file, line_number, s, row[s])
 							if s in args.mean:
 								non_numeric_value_error('mean', non_numeric_tracker, args.input_file, line_number, s, row[s])
+						except KeyError:
+							missing_field_error(args.input_file, s)
 
 				if find_tops:
 					for t in groups[current_group].tops.keys():
-						if row[t] in groups[current_group].tops[t]['all']:
-							groups[current_group].tops[t]['all'][row[t]] += 1
-						else:
-							groups[current_group].tops[t]['all'][row[t]] = 1
+						try:
+							if row[t] in groups[current_group].tops[t]['all']:
+								groups[current_group].tops[t]['all'][row[t]] += 1
+							else:
+								groups[current_group].tops[t]['all'][row[t]] = 1
+						except KeyError:
+							missing_field_error(args.input_file, t)
 
 	except FileNotFoundError:
 		print('Error:' + args.input_file + ':file not found', file=sys.stderr)
