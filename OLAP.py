@@ -102,7 +102,7 @@ def missing_field_error(input_file, missing_field):
 	prints a missing field error then exits with error code 8
 	takes the input file and the missing field as strings
 	"""
-	print('Error: '+ input_file + ':no field with name ‘' + missing_field + '’', file=sys.stderr)
+	print('Error: '+ input_file + ':no field with name ‘' + missing_field + '’ found', file=sys.stderr)
 	sys.exit(8)
 
 def get_values(args):
@@ -143,7 +143,7 @@ def get_values(args):
 				try:
 					current_group = '_OTHER' if not grouper else row[grouper]
 				except KeyError:
-					print('Error: ' + args.input_file + ':no group-by argument with name ‘' + grouper + '’', file=sys.stderr)
+					print('Error: ' + args.input_file + ':no group-by argument with name ‘' + grouper + '’ found', file=sys.stderr)
 					sys.exit(9)
 
 				#creates the group if it doesnt already exist unless there are more then 20...
