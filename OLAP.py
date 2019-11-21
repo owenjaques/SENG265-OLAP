@@ -92,9 +92,9 @@ def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file
 	"""
 	print('Error: ' + input_file + ':' + str(line_number) + ": can't compute " + aggregrate_function + " on non-numeric value '" + str(value) + "'", file=sys.stderr)
 	#in the case the error is raised more than once for example if sum and mean max were all called on the same value
-	if line_number not in non_numeric_tracker['field_counts'][aggregrate_field]:
-		non_numeric_tracker['field_counts'][aggregrate_field].append(line_number)
-	if len(non_numeric_tracker['field_counts'][aggregrate_field]) > 100:
+	if line_number not in non_numeric_tracker[aggregrate_field]:
+		non_numeric_tracker[aggregrate_field].append(line_number)
+	if len(non_numeric_tracker[aggregrate_field]) > 100:
 		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column ‘" + aggregrate_field + "’", file=sys.stderr)
 		sys.exit(7)
 
@@ -133,10 +133,12 @@ def get_values(args):
 		with open(args.input_file, 'r', encoding='UTF-8-SIG') as the_file:
 			reader = csv.DictReader(the_file, delimiter=',')
 			reader.fieldnames = [field.lower() for field in reader.fieldnames]
-			non_numeric_tracker = {'field_counts': {k: [] for k in reader.fieldnames}}
-			top_k_tracker = {'field_counts': {k: [] for k in reader.fieldnames}}
 
-			#calculates all requested aggregrates in one pass by
+			#two trackers for tracking the occurances of non numeric values and distinct k values for error checking for each column
+			non_numeric_tracker = {k: [] for k in reader.fieldnames}
+			top_k_tracker = {k: [] for k in reader.fieldnames}
+
+			#calculates all requested aggregrates in one pass by of the file
 			for line_number, row in enumerate(reader, start=1):
 				#determines which group its reading and throw an error if that group does not exist
 				try:
@@ -201,13 +203,24 @@ def get_values(args):
 
 				if find_tops:
 					for t in groups[current_group].tops.keys():
-						try:
-							if row[t] in groups[current_group].tops[t]['all']:
-								groups[current_group].tops[t]['all'][row[t]] += 1
-							else:
-								groups[current_group].tops[t]['all'][row[t]] = 1
-						except KeyError:
-							missing_field_error(args.input_file, t)
+						#checks if it should cap the top k values
+						if len(top_k_tracker[t]) == 20:
+							if 'capped' not in groups[current_group].tops[t]:
+								print('Error: ' + args.input_file + ': ' + t + ' has been capped at 20 distinct values', file=sys.stderr)
+								groups[current_group].tops[t]['capped'] = True
+						else:
+							try:
+								if row[t] in groups[current_group].tops[t]['all']:
+									groups[current_group].tops[t]['all'][row[t]] += 1
+								else:
+									groups[current_group].tops[t]['all'][row[t]] = 1
+
+								#for the capping
+								if row[t] not in top_k_tracker[t]:
+									top_k_tracker[t].append(row[t])
+							except KeyError:
+								missing_field_error(args.input_file, t)
+							
 
 	except FileNotFoundError:
 		print('Error:' + args.input_file + ':file not found', file=sys.stderr)
@@ -237,11 +250,11 @@ def get_values(args):
 				# then isolates just the top k values
 				k_maxes = sorted([[k, v] for k, v in groups[g].tops[t]['all'].items()], reverse=True, key=lambda top: top[1])[0: groups[g].tops[t]['k']]
 				#makes the string
-				max_tops[t] = ""
+				max_tops[t] = {'string': "", 'capped': True if 'capped' in groups[g].tops[t] else False}
 				for i in range(len(k_maxes)):
-					max_tops[t] += str(k_maxes[i][0]) + ': ' + str(k_maxes[i][1])
+					max_tops[t]['string'] += str(k_maxes[i][0]) + ': ' + str(k_maxes[i][1])
 					if i != len(k_maxes) - 1:
-						max_tops[t] += ', '
+						max_tops[t]['string'] += ', '
 			groups[g].tops = max_tops
 
 	return groups
@@ -305,9 +318,12 @@ def print_file(groups):
 					j += 1
 
 			elif ordered_args[i] == '--top':
+				fieldname = 'top' + ordered_args[i+1] + '_' + ordered_args[i+2]
+				if groups[g].tops[ordered_args[i+2]]['capped']:
+					fieldname += '_capped'
 				if z == 0:
-					fieldnames.append('top' + ordered_args[i+1] + '_' + ordered_args[i+2])
-				rows[z]['top' + ordered_args[i+1] + '_' + ordered_args[i+2]] = groups[g].tops[ordered_args[i+2]]
+						fieldnames.append(fieldname)
+				rows[z][fieldname] = groups[g].tops[ordered_args[i+2]]['string']
 
 			elif ordered_args[i] == '--group-by':
 				if z == 0:
