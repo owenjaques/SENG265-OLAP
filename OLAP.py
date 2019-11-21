@@ -50,7 +50,7 @@ class Group:
 				try:
 					self.tops[t[1]] = {'k': int(t[0]), 'all': {}}
 				except ValueError:
-					print('Error: ' + args.input_file + ':unable to compute top ‘' + t[0] + '’' + ' values')
+					print('Error: ' + args.input_file + ':unable to compute top ‘' + t[0] + '’' + ' values', file=sys.stderr)
 					sys.exit(6)
 
 def get_args():
