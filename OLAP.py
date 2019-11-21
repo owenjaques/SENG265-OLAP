@@ -6,7 +6,6 @@ import sys
 import csv
 
 #TODO: add a way to deal with newlines and " in the tops
-#TODO: alpahbeticize the _OTHER maybe it is already
 
 class Group:
 	"""
@@ -272,9 +271,16 @@ def print_file(groups):
 	#a flag for adding the count if there are no aggregrate arguments
 	has_been_counted = False
 
+	#creates the group list then moves _OTHER if it exits to the back
+	group_list = sorted(groups.keys())
+	if '_OTHER' in group_list:
+		group_list.remove('_OTHER')
+		group_list.append('_OTHER')
+
+
 	for i in range(len(ordered_args)):
 		#adds every group's value to the rows for the current 
-		for z, g in enumerate(sorted(groups.keys())):
+		for z, g in enumerate(group_list):
 			#a flag for adding the count in the case the file is being grouped-by but no aggregrate arguments were specified
 			getting_grouped_by = False
 
