@@ -92,10 +92,9 @@ def non_numeric_value_error(aggregrate_function, non_numeric_tracker, input_file
 	"""
 	print('Error: ' + input_file + ':' + str(line_number) + ": can't compute " + aggregrate_function + " on non-numeric value '" + str(value) + "'", file=sys.stderr)
 	#in the case the error is raised more than once for example if sum and mean max were all called on the same value
-	if line_number not in non_numeric_tracker['line_numbers']:
-		non_numeric_tracker['field_counts'][aggregrate_field] += 1
-		non_numeric_tracker['line_numbers'].append(line_number)
-	if non_numeric_tracker['field_counts'][aggregrate_field] > 100:
+	if line_number not in non_numeric_tracker['field_counts'][aggregrate_field]:
+		non_numeric_tracker['field_counts'][aggregrate_field].append(line_number)
+	if len(non_numeric_tracker['field_counts'][aggregrate_field]) > 100:
 		print("Error: " + input_file + ":more than 100 non-numeric values found in aggregate column ‘" + aggregrate_field + "’", file=sys.stderr)
 		sys.exit(7)
 
@@ -134,7 +133,8 @@ def get_values(args):
 		with open(args.input_file, 'r', encoding='UTF-8-SIG') as the_file:
 			reader = csv.DictReader(the_file, delimiter=',')
 			reader.fieldnames = [field.lower() for field in reader.fieldnames]
-			non_numeric_tracker = {'field_counts': {k: 0 for k in reader.fieldnames}, 'line_numbers': []}
+			non_numeric_tracker = {'field_counts': {k: [] for k in reader.fieldnames}}
+			top_k_tracker = {'field_counts': {k: [] for k in reader.fieldnames}}
 
 			#calculates all requested aggregrates in one pass by
 			for line_number, row in enumerate(reader, start=1):
@@ -194,7 +194,7 @@ def get_values(args):
 						except ValueError:
 							if s in args.sums:
 								non_numeric_value_error('sum', non_numeric_tracker, args.input_file, line_number, s, row[s])
-							if s in args.mean:
+							if args.mean and s in args.mean:
 								non_numeric_value_error('mean', non_numeric_tracker, args.input_file, line_number, s, row[s])
 						except KeyError:
 							missing_field_error(args.input_file, s)
