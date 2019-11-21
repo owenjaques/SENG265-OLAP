@@ -7,7 +7,6 @@ import csv
 
 #TODO: add a way to deal with newlines and " in the tops
 #TODO: alpahbeticize the _OTHER maybe it is already
-#TODO: add printing of multiple aggregrate arguments *********
 
 class Group:
 	"""
